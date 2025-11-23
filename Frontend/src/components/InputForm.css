@@ -1,0 +1,114 @@
+﻿.input-form-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.input-form-card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 100%;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.input-form-card h2 {
+    color: #333;
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 10px;
+        color: #555;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+    .form-input:focus,
+    .form-textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+.form-textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.submit-button {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+    .submit-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .submit-button:active {
+        transform: translateY(0);
+    }
+
+.info-box {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f4ff;
+    border-left: 4px solid #667eea;
+    border-radius: 5px;
+}
+
+    .info-box p {
+        color: #555;
+        margin: 0;
+    }
+
+@media (max-width: 768px) {
+    .input-form-card {
+        padding: 30px 20px;
+    }
+
+        .input-form-card h2 {
+            font-size: 1.5rem;
+        }
+}

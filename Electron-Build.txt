@@ -1,0 +1,27 @@
+cd "C:\Users\HST\source\repos\CAR-ADVISOR\CAR-ADVISOR"
+
+dotnet clean
+
+rd /s /q bin
+rd /s /q obj
+rd /s /q dist
+rd /s /q api_bin
+rd /s /q wwwroot
+rd /s /q Frontend\build
+
+cd Frontend
+call npm install
+call npm run build
+cd ..
+
+xcopy /E /I /Y "Frontend\build" "ui_build"
+
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o api_bin
+
+copy /Y appsettings.json api_bin\
+
+call npm install
+call npm run dist
+
+cd dist
+"Car Advisor AI 1.0.0.exe"

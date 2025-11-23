@@ -1,0 +1,36 @@
+{
+  "name": "car-advisor-ai",
+  "version": "1.0.0",
+  "homepage": ".",
+  "private": true,
+  "main": "main.js",
+  "description": "AI Powered Car Advisor",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.hselimt.caradvisor",
+    "productName": "Car Advisor AI",
+    "icon": "hst-high-resolution-logo-transparent.ico",
+    "files": [
+      "main.js",
+      "preload.js",
+      "ui_build/**/*",
+      "api_bin/**/*",
+      "hst-high-resolution-logo-transparent.ico"
+    ],
+    "asarUnpack": [
+      "ui_build/**/*",
+      "api_bin/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "hst-high-resolution-logo-transparent.ico"
+    }
+},
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  }
+}
