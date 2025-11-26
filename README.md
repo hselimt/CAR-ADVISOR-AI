@@ -1,6 +1,14 @@
-# 🚗 Car Advisor AI
-
-> 🤖 Multi-agent car recommendation system powered by Google Gemini AI for the automotive market.
+<div align="center">
+  <h1>CAR ADVISOR AI</h1>
+  
+  <p>
+    <b>🤖 Multi-agent car recommendation system powered by Google Gemini AI for the automotive market.</b>
+  </p>
+  
+  <br>
+  
+  <img src="CA.gif" alt="Car Advisor" width="80%">
+</div>
 
 ## ✨ What It Does
 
