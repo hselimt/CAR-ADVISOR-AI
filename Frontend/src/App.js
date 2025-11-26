@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -14,6 +14,8 @@ function App() {
     const [winner, setWinner] = useState(null);
     const [selectedAgent, setSelectedAgent] = useState(null);
     const [processingStage, setProcessingStage] = useState(null);
+    const [winnerImage, setWinnerImage] = useState(null);
+    const [imageLoading, setImageLoading] = useState(false);
 
     const countries = [
         { name: 'Turkey', currency: 'TRY', symbol: '₺' },
@@ -23,11 +25,6 @@ function App() {
         { name: 'Japan', currency: 'JPY', symbol: '¥' },
         { name: 'UAE', currency: 'AED', symbol: 'د.إ' }
     ];
-
-    const agentIcons = {
-        'Ultra-Luxury': '💎', 'Premium': '⭐', 'Upper-Mainstream': '🎯',
-        'Mainstream': '🔧', 'Budget': '💸', 'Electric': '⚡'
-    };
 
     const allAgentNames = ['Ultra-Luxury', 'Premium', 'Upper-Mainstream', 'Mainstream', 'Budget', 'Electric'];
 
@@ -54,7 +51,6 @@ function App() {
         setProcessingStage('agents');
 
         try {
-            // Backend call
             const response = await axios.post('http://localhost:5163/api/CarAdvisor/analyze', {
                 minBudget: cleanMin,
                 maxBudget: cleanMax,
@@ -64,23 +60,20 @@ function App() {
             });
 
             setAgents(response.data.recommendations);
-            setProcessingStage('agents-complete');
+            setProcessingStage('jury');
 
-            // Simulate delay
             setTimeout(() => {
-                setProcessingStage('jury');
-                setTimeout(() => {
-                    setWinner(response.data.winner);
-                    setLoading(false);
-                    setProcessingStage('complete');
-                }, 1500);
-            }, 800);
+                setWinner(response.data.winner);
+                setLoading(false);
+                setProcessingStage('complete');
+            }, 1000);
 
         } catch (error) {
             console.error(error);
             alert('Error: ' + (error.response?.data?.error || error.message));
             setLoading(false);
             setStarted(false);
+            setProcessingStage(null);
         }
     };
 
@@ -93,154 +86,257 @@ function App() {
         setMaxBudget('');
         setPreferences('');
         setSelectedAgent(null);
+        setProcessingStage(null);
+        setWinnerImage(null);
+        setImageLoading(false);
     };
 
-    // Helper to generate small text for agent cards
-    const getAgentSummary = (agent) => {
-        if (!agent || !agent.suggestions || agent.suggestions.length === 0) {
-            if (agent?.budgetStatus === 'too-expensive') return 'ABOVE BUDGET';
-            if (agent?.budgetStatus === 'too-cheap') return 'BELOW BUDGET';
-            return 'NO MATCHES';
+    const getAgentData = (agentName) => {
+        const agent = agents.find(a => a.agentName === agentName);
+        
+        if (!agent) {
+            return { text: 'NOT INCLUDED', status: 'not-included' };
         }
-        // Return structured names instead of parsing markdown
-        return agent.suggestions.map(c => `${c.make} ${c.model}`).join(' • ').toUpperCase();
+
+        const budgetStatus = agent.budgetStatus || agent.BudgetStatus;
+        
+        if (budgetStatus === 'too-expensive') {
+            return { text: 'ABOVE BUDGET', status: 'out-of-range' };
+        }
+        if (budgetStatus === 'too-cheap') {
+            return { text: 'BELOW BUDGET', status: 'out-of-range' };
+        }
+
+        if (!agent.suggestions || agent.suggestions.length === 0) {
+            return { text: 'NO SUGGESTIONS', status: 'out-of-range' };
+        }
+
+        const cars = agent.suggestions.map(c => `${c.make || c.Make} ${c.model || c.Model}`).join(' / ');
+        return { 
+            text: cars.length > 40 ? cars.substring(0, 40) + '...' : cars, 
+            status: 'has-results',
+            clickable: true,
+            agent: agent
+        };
     };
+
+    const getCardState = () => {
+        if (agents.length > 0) return 'done';
+        if (processingStage === 'agents') return 'processing';
+        return 'waiting';
+    };
+
+    const generateWinnerImage = async (carName) => {
+        if (!carName || winnerImage) return;
+        setImageLoading(true);
+        try {
+            const response = await axios.post('http://localhost:5163/api/CarAdvisor/generate-image', {
+                carName: carName
+            });
+            setWinnerImage(response.data.image);
+        } catch (error) {
+            console.error('Image generation failed:', error);
+        }
+        setImageLoading(false);
+    };
+
+    // Auto-generate image when jury modal opens
+    React.useEffect(() => {
+        if (selectedAgent?.isJury && selectedAgent?.winningCar && !winnerImage && !imageLoading) {
+            generateWinnerImage(selectedAgent.winningCar);
+        }
+    }, [selectedAgent]);
 
     return (
-        <div className="App">
-            {window.electronAPI && <button className="quit-button" onClick={handleQuit}>×</button>}
-            <header className="App-header">
-                <div className="header-content">
-                    <h1>AI CAR ADVISOR</h1>
-                    <p>Multi-Agent System • Fintech Architecture</p>
-                </div>
+        <div className="app">
+            {window.electronAPI && (
+                <button className="quit-btn" onClick={handleQuit}>x</button>
+            )}
+
+            <header className="header">
+                <h1>AI CAR ADVISOR</h1>
+                <span className="subtitle">Multi-Agent Recommendation System</span>
             </header>
 
-            <main className="App-main">
+            <main className="main">
                 {!started ? (
-                    <div className="input-form">
-                        <h2>YOUR REQUIREMENTS</h2>
+                    <div className="form-container">
+                        <div className="form-title">REQUIREMENTS</div>
                         <form onSubmit={handleSubmit}>
-                            <div className="form-group">
+                            <div className="field">
                                 <label>MARKET</label>
                                 <select value={country} onChange={e => {
                                     const c = countries.find(x => x.name === e.target.value);
                                     setCountry(c.name); setCurrency(c.currency);
-                                }} className="form-select">
-                                    {countries.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                }}>
+                                    {countries.map(c => (
+                                        <option key={c.name} value={c.name}>{c.name}</option>
+                                    ))}
                                 </select>
                             </div>
-                            <div className="form-group">
+
+                            <div className="field">
                                 <label>BUDGET ({countries.find(c => c.name === country).symbol})</label>
-                                <div className="budget-range">
-                                    <input value={minBudget} onChange={e => setMinBudget(formatBudget(e.target.value))} className="budget-input" placeholder="Min" />
-                                    <span className="budget-separator">-</span>
-                                    <input value={maxBudget} onChange={e => setMaxBudget(formatBudget(e.target.value))} className="budget-input" placeholder="Max" />
+                                <div className="budget-row">
+                                    <input 
+                                        value={minBudget} 
+                                        onChange={e => setMinBudget(formatBudget(e.target.value))} 
+                                        placeholder="Min" 
+                                    />
+                                    <span className="separator">-</span>
+                                    <input 
+                                        value={maxBudget} 
+                                        onChange={e => setMaxBudget(formatBudget(e.target.value))} 
+                                        placeholder="Max" 
+                                    />
                                 </div>
                             </div>
-                            <div className="form-group">
+
+                            <div className="field">
                                 <label>PREFERENCES</label>
-                                <textarea value={preferences} onChange={e => setPreferences(e.target.value)} className="form-textarea" rows="3" />
+                                <textarea 
+                                    value={preferences} 
+                                    onChange={e => setPreferences(e.target.value)} 
+                                    rows="2"
+                                    placeholder="e.g., Fuel efficient, safe, modern tech..."
+                                />
                             </div>
-                            <button type="submit">START ANALYSIS</button>
+
+                            <button type="submit" className="submit-btn">ANALYZE</button>
                         </form>
                     </div>
                 ) : (
                     <div className="results">
-                        {/* Progress Bar Visualization */}
-                        <div className="progress-tracker">
-                            <div className="progress-header">
-                                <span className="progress-title">
-                                    {processingStage === 'agents' && 'AGENTS ANALYZING...'}
-                                    {processingStage === 'jury' && 'JURY DELIBERATION...'}
-                                    {processingStage === 'complete' && 'VERDICT READY'}
-                                </span>
-                            </div>
+                        <div className="status-bar">
+                            <span className="status-text">
+                                {processingStage === 'agents' && 'ANALYZING...'}
+                                {processingStage === 'jury' && 'JURY DECIDING...'}
+                                {processingStage === 'complete' && 'COMPLETE'}
+                            </span>
                         </div>
 
-                        {/* Agent Cards */}
-                        {(!loading || agents.length > 0) && (
-                            <div className="agents-grid">
-                                {allAgentNames.map((name, index) => {
-                                    const agent = agents.find(a => a.agentName === name);
-                                    const summary = getAgentSummary(agent);
-                                    const isDimmed = summary === 'ABOVE BUDGET' || summary === 'BELOW BUDGET' || summary === 'NO MATCHES';
+                        <div className="agents-grid">
+                            {allAgentNames.map((agentName, index) => {
+                                const cardState = getCardState();
+                                const agentData = cardState === 'done' ? getAgentData(agentName) : null;
 
-                                    return (
-                                        <div key={index}
-                                            className={`agent-card-compact ${isDimmed ? 'out-of-range' : ''}`}
-                                            onClick={() => agent && agent.suggestions.length > 0 && setSelectedAgent(agent)}>
-                                            <div className="agent-header-compact">
-                                                <div className="agent-icon-compact">{agentIcons[name]}</div>
-                                                <div className="agent-name-compact">{name}</div>
-                                            </div>
-                                            <div className={`agent-cars-compact ${isDimmed ? 'out-of-range-text' : ''}`}>
-                                                {loading && !agent ? '...' : summary}
-                                            </div>
+                                return (
+                                    <div 
+                                        key={index}
+                                        className={`agent-card ${cardState} ${agentData?.status || ''}`}
+                                        onClick={() => agentData?.clickable && setSelectedAgent(agentData.agent)}
+                                    >
+                                        <div className="agent-name">{agentName}</div>
+                                        <div className="agent-result">
+                                            {cardState === 'processing' && (
+                                                <div className="spinner"></div>
+                                            )}
+                                            {cardState === 'done' && agentData && (
+                                                <span className={`result-text ${agentData.status}`}>
+                                                    {agentData.text}
+                                                </span>
+                                            )}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {(processingStage === 'jury' || processingStage === 'complete') && (
+                            <div className={`jury-section ${processingStage === 'complete' ? 'done' : ''}`}>
+                                <div className="jury-label">JURY</div>
+                                {processingStage === 'jury' && (
+                                    <div className="jury-loading">
+                                        <div className="spinner"></div>
+                                    </div>
+                                )}
+                                {processingStage === 'complete' && winner && (
+                                    <div className="jury-result">
+                                        <div className="winner-car">{winner.winningCar}</div>
+                                        <div className="winner-price">{winner.winningCarPrice}</div>
+                                        <div className="winner-score">Score: {winner.totalScore}/100</div>
+                                        <button className="report-btn" onClick={() => setSelectedAgent({ isJury: true, ...winner })}>
+                                            VIEW REPORT
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* Winner Card */}
-                        {winner && (
-                            <div className="winner-card-compact">
-                                <div className="winner-header-compact">
-                                    <span className="winner-icon">🏆</span>
-                                    <span className="winner-title-compact">FINAL VERDICT</span>
-                                </div>
-                                <div className="winner-preview-compact" style={{ fontSize: '1.2rem', color: 'white' }}>
-                                    {winner.winningCar}
-                                </div>
-                                <div style={{ textAlign: 'center', color: '#4a9eff', fontSize: '0.9rem', marginTop: '5px' }}>
-                                    Score: {winner.totalScore}/100
-                                </div>
-                                <button className="expand-button-compact" onClick={() => setSelectedAgent({ isJury: true, ...winner })}>
-                                    VIEW REPORT
-                                </button>
-                            </div>
+                        {!loading && (
+                            <button className="reset-btn" onClick={handleReset}>NEW SEARCH</button>
                         )}
-
-                        {!loading && <button className="reset-button" onClick={handleReset}>NEW SEARCH</button>}
                     </div>
                 )}
             </main>
 
-            {/* Detail Modal - Now uses CLEAN DATA, no dangerous HTML */}
+            <footer className="footer">
+                Powered by Gemini 1.5
+            </footer>
+
             {selectedAgent && (
                 <div className="modal-overlay" onClick={() => setSelectedAgent(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>{selectedAgent.isJury ? 'Jury Verdict' : selectedAgent.agentName}</h3>
-                            <button className="modal-close" onClick={() => setSelectedAgent(null)}>×</button>
+                            <span>{selectedAgent.isJury ? 'Jury Verdict' : selectedAgent.agentName}</span>
+                            <button className="close-btn" onClick={() => setSelectedAgent(null)}>x</button>
                         </div>
                         <div className="modal-body">
                             {selectedAgent.isJury ? (
-                                <div>
-                                    <h2 style={{ color: '#4a9eff' }}>{selectedAgent.winningCar}</h2>
-                                    <p>{selectedAgent.finalVerdict}</p>
-                                    <div style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                                        {Object.entries(selectedAgent.detailedScores).map(([key, val]) => (
-                                            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                                <span>{key}</span>
-                                                <span style={{ color: '#10b981', fontWeight: 'bold' }}>{val}</span>
+                                <div className="jury-report">
+                                    <div className="verdict-car">{selectedAgent.winningCar}</div>
+                                    <div className="verdict-price">{selectedAgent.winningCarPrice}</div>
+                                    
+                                    <div className="verdict-image">
+                                        {imageLoading ? (
+                                            <div className="image-loading">
+                                                <div className="spinner"></div>
+                                            </div>
+                                        ) : winnerImage ? (
+                                            <img src={winnerImage} alt={selectedAgent.winningCar} />
+                                        ) : (
+                                            <div className="image-placeholder">No image</div>
+                                        )}
+                                    </div>
+
+                                    <p className="verdict-text">{selectedAgent.finalVerdict}</p>
+                                    
+                                    <div className="scores">
+                                        {selectedAgent.detailedScores && Object.entries(selectedAgent.detailedScores).map(([key, val]) => (
+                                            <div key={key} className="score-row">
+                                                <span className="score-label">{key}</span>
+                                                <div className="score-bar">
+                                                    <div className="score-fill" style={{ width: `${(val / 20) * 100}%` }} />
+                                                </div>
+                                                <span className="score-val">{val}</span>
                                             </div>
                                         ))}
                                     </div>
+
+                                    {selectedAgent.keyStrengths && (
+                                        <div className="strengths">
+                                            <div className="strengths-title">Key Strengths</div>
+                                            {selectedAgent.keyStrengths.map((s, i) => (
+                                                <div key={i} className="strength-item">- {s}</div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <div>
-                                    {selectedAgent.suggestions.map((car, i) => (
-                                        <div key={i} style={{ marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-                                            <h4 style={{ color: '#e0e0e0', fontSize: '1.1rem' }}>{car.make} {car.model} ({car.year})</h4>
-                                            <div style={{ color: '#4a9eff', fontWeight: 'bold' }}>{car.price} {currency}</div>
-                                            <ul style={{ color: '#909090', fontSize: '0.85rem', paddingLeft: '20px', marginTop: '5px' }}>
-                                                <li>Engine: {car.engine}</li>
-                                                <li>Fuel: {car.fuel}</li>
-                                                <li>Safety: {car.safetyRating}</li>
-                                            </ul>
-                                            <p style={{ fontStyle: 'italic', color: '#b0b0b0', marginTop: '8px' }}>"{car.reasoning}"</p>
+                                <div className="cars-list">
+                                    {selectedAgent.suggestions?.map((car, i) => (
+                                        <div key={i} className="car-item">
+                                            <div className="car-name">
+                                                {car.make || car.Make} {car.model || car.Model} 
+                                                <span className="car-year">{car.year || car.Year}</span>
+                                            </div>
+                                            <div className="car-price">{car.price || car.Price}</div>
+                                            <div className="car-specs">
+                                                <span>Engine: {car.engine || car.Engine}</span>
+                                                <span>Fuel: {car.fuel || car.Fuel}</span>
+                                                <span>Safety: {car.safetyRating || car.SafetyRating}</span>
+                                            </div>
+                                            <div className="car-reasoning">{car.reasoning || car.Reasoning}</div>
                                         </div>
                                     ))}
                                 </div>

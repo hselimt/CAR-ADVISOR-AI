@@ -39,6 +39,7 @@
     public class JuryDecision
     {
         public string WinningCar { get; set; } = string.Empty;
+        public string WinningCarPrice { get; set; } = string.Empty;
         public string FinalVerdict { get; set; } = string.Empty;
         public int TotalScore { get; set; }
         public Dictionary<string, int> DetailedScores { get; set; } = new();
