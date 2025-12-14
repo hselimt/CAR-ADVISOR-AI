@@ -1,4 +1,4 @@
-cd "C:\Users\HST\source\repos\CAR-ADVISOR\CAR-ADVISOR"
+cd "C:\Users\HST\CAR-ADVISOR-AI"
 
 dotnet clean
 
@@ -9,12 +9,12 @@ rd /s /q api_bin
 rd /s /q wwwroot
 rd /s /q Frontend\build
 
-cd Frontend
+cd View
 call npm install
 call npm run build
 cd ..
 
-xcopy /E /I /Y "Frontend\build" "ui_build"
+xcopy /E /I /Y "View\build" "ui_build"
 
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o api_bin
 
