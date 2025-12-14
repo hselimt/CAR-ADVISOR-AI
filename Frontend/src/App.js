@@ -271,7 +271,7 @@ function App() {
             </main>
 
             <footer className="footer">
-                Powered by Gemini 1.5
+                Powered by Claude-3-5-haiku
             </footer>
 
             {selectedAgent && (

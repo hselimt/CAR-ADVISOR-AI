@@ -10,12 +10,11 @@ namespace CarAdvisorAPI.Controllers
     [Route("api/[controller]")]
     public class CarAdvisorController : ControllerBase
     {
-        private readonly IGeminiService _aiService;
-        
-        // Turkish market price adjustment multiplier
+        private readonly IClaudeService _aiService;
+
         private const double TurkishInflationRate = 1.25;
 
-        public CarAdvisorController(IGeminiService aiService)
+        public CarAdvisorController(IClaudeService aiService)
         {
             _aiService = aiService;
         }
@@ -28,15 +27,13 @@ namespace CarAdvisorAPI.Controllers
                 var userMinBudget = long.Parse(request.MinBudget);
                 var userMaxBudget = long.Parse(request.MaxBudget);
 
-                // For Turkey: divide budget by divisor before sending to AI
-                var aiMinBudget = request.Country == "Turkey" 
-                    ? (long)(userMinBudget / TurkishInflationRate) 
+                var aiMinBudget = request.Country == "Turkey"
+                    ? (long)(userMinBudget / TurkishInflationRate)
                     : userMinBudget;
-                var aiMaxBudget = request.Country == "Turkey" 
-                    ? (long)(userMaxBudget / TurkishInflationRate) 
+                var aiMaxBudget = request.Country == "Turkey"
+                    ? (long)(userMaxBudget / TurkishInflationRate)
                     : userMaxBudget;
 
-                // Create adjusted request for AI
                 var aiRequest = new UserRequest
                 {
                     MinBudget = aiMinBudget.ToString(),
@@ -121,7 +118,6 @@ namespace CarAdvisorAPI.Controllers
 
                 var recommendations = await Task.WhenAll(tasks);
 
-                // Multiply prices by inflation rate
                 if (request.Country == "Turkey")
                 {
                     foreach (var rec in recommendations)
@@ -144,8 +140,7 @@ namespace CarAdvisorAPI.Controllers
                 }
 
                 var winner = await _aiService.JuryDecision(validRecommendations, aiRequest);
-                
-                // Multiply winner price by inflation rate
+
                 if (request.Country == "Turkey" && winner != null)
                 {
                     winner.WinningCarPrice = AdjustPrice(winner.WinningCarPrice, TurkishInflationRate);
@@ -167,41 +162,29 @@ namespace CarAdvisorAPI.Controllers
         {
             if (string.IsNullOrEmpty(priceStr)) return priceStr;
 
-            // Extract numbers from price string (e.g., "1,500,000 TRY" -> 1500000)
             var numbersOnly = Regex.Replace(priceStr, @"[^\d]", "");
-            
+
             if (long.TryParse(numbersOnly, out long price))
             {
                 var adjustedPrice = (long)(price * multiplier);
-                
-                // Round to nearest 100,000
                 adjustedPrice = (long)(Math.Round(adjustedPrice / 100000.0) * 100000);
-                
-                // Format with commas and add ~ prefix
                 var formattedPrice = adjustedPrice.ToString("N0");
-                
-                // Try to preserve original currency with ~ prefix
+
                 if (priceStr.Contains("TRY") || priceStr.Contains("₺"))
                     return $"~{formattedPrice} TRY";
                 if (priceStr.Contains("USD") || priceStr.Contains("$"))
                     return $"~${formattedPrice}";
                 if (priceStr.Contains("EUR") || priceStr.Contains("€"))
                     return $"~€{formattedPrice}";
-                    
+
                 return $"~{formattedPrice}";
             }
 
             return priceStr;
         }
 
-        private long ExtractPriceNumber(string priceStr)
-        {
-            if (string.IsNullOrEmpty(priceStr)) return 0;
-            var numbersOnly = Regex.Replace(priceStr, @"[^\d]", "");
-            return long.TryParse(numbersOnly, out long price) ? price : 0;
-        }
-
-    [HttpPost("generate-image")]
+        /*
+        [HttpPost("generate-image")]
         public async Task<ActionResult> GenerateImage([FromBody] ImageRequest request)
         {
             try
@@ -209,7 +192,7 @@ namespace CarAdvisorAPI.Controllers
                 var imageData = await _aiService.GenerateCarImage(request.CarName);
                 if (imageData == null)
                 {
-                    return BadRequest(new { error = "Failed to generate image" });
+                    return BadRequest(new { error = "Image generation not supported with Claude API" });
                 }
                 return Ok(new { image = imageData });
             }
@@ -218,6 +201,7 @@ namespace CarAdvisorAPI.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+        */
     }
 
     public class ImageRequest
